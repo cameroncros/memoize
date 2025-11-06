@@ -150,6 +150,35 @@ mod store {
 mod store {
     use crate::CacheOptions;
     use proc_macro::TokenStream;
+    use quote::quote;
+    use syn::{parse2, AngleBracketedGenericArguments, PathArguments, Type, TypePath};
+
+    fn get_inner_value(outer: proc_macro2::TokenStream) -> proc_macro2::TokenStream {
+        // Parse the input as a Rust type
+        let input_ty = parse2::<Type>(outer).expect("failed to parse outer type");
+
+        // Ensure it’s a path type (e.g., Result<T, E>)
+        if let Type::Path(path) = input_ty {
+            // Look at the last segment (e.g., "Result")
+            let last_segment = path.path.segments.last().expect("Expected a Result");
+
+            if let PathArguments::AngleBracketed(AngleBracketedGenericArguments { args, .. }) =
+                &last_segment.arguments
+            {
+                // The first generic argument of Result<T, E> is the Ok type
+                if let Some(syn::GenericArgument::Type(ok_type)) = args.first() {
+                    return quote! { #ok_type }.into()
+                } else {
+                    panic!("Expected a type argument inside Result<>");
+                }
+            } else {
+                panic!("Expected angle bracketed generic arguments");
+            }
+        } else {
+            panic!("Expected a type path like Result<T, E>");
+        };
+    }
+
 
     /// Returns TokenStreams to be used in quote!{} for parametrizing the memoize store variable,
     /// and initializing it.
@@ -161,6 +190,8 @@ mod store {
         key_type: proc_macro2::TokenStream,
         value_type: proc_macro2::TokenStream,
     ) -> (proc_macro2::TokenStream, proc_macro2::TokenStream) {
+        let value_type = get_inner_value(value_type);
+
         let value_type = match options.time_to_live {
             None => quote::quote! {#value_type},
             Some(_) => quote::quote! {(std::time::Instant, #value_type)},
@@ -384,15 +415,15 @@ pub fn memoize(attr: TokenStream, item: TokenStream) -> TokenStream {
             {
                 let mut ATTR_MEMOIZE_HM__ = #store_ident.lock().unwrap();
                 if let Some(ATTR_MEMOIZE_RETURN__) = #read_memo {
-                    return ATTR_MEMOIZE_RETURN__
+                    return Ok(ATTR_MEMOIZE_RETURN__)
                 }
             }
-            let ATTR_MEMOIZE_RETURN__ = #memoized_id #forwarding_tuple;
+            let ATTR_MEMOIZE_RETURN__ = #memoized_id #forwarding_tuple?;
 
             let mut ATTR_MEMOIZE_HM__ = #store_ident.lock().unwrap();
             #memoize
 
-            ATTR_MEMOIZE_RETURN__
+            Ok(ATTR_MEMOIZE_RETURN__)
         }
     } else {
         quote::quote! {
@@ -401,17 +432,17 @@ pub fn memoize(attr: TokenStream, item: TokenStream) -> TokenStream {
                 #read_memo
             });
             if let Some(ATTR_MEMOIZE_RETURN__) = ATTR_MEMOIZE_RETURN__ {
-                return ATTR_MEMOIZE_RETURN__;
+                return Ok(ATTR_MEMOIZE_RETURN__);
             }
 
-            let ATTR_MEMOIZE_RETURN__ = #memoized_id #forwarding_tuple;
+            let ATTR_MEMOIZE_RETURN__ = #memoized_id #forwarding_tuple?;
 
             #store_ident.with(|ATTR_MEMOIZE_HM__| {
                 let mut ATTR_MEMOIZE_HM__ = ATTR_MEMOIZE_HM__.borrow_mut();
                 #memoize
             });
 
-            ATTR_MEMOIZE_RETURN__
+            Ok(ATTR_MEMOIZE_RETURN__)
         }
     };
 

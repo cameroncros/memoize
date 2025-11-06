@@ -1,16 +1,16 @@
 use memoize::memoize;
 
 #[memoize]
-fn hello(arg: String, arg2: usize) -> bool {
+fn hello(arg: String, arg2: usize) -> Result<bool, ()> {
     println!("{} => {}", arg, arg2);
-    arg.len() % 2 == arg2
+    Ok(arg.len() % 2 == arg2)
 }
 
 fn main() {
     // `hello` is only called once here.
-    assert!(!hello("World".to_string(), 0));
-    assert!(!hello("World".to_string(), 0));
+    assert!(!hello("World".to_string(), 0).unwrap());
+    assert!(!hello("World".to_string(), 0).unwrap());
     // Sometimes one might need the original function.
-    assert!(!memoized_original_hello("World".to_string(), 0));
+    assert!(!memoized_original_hello("World".to_string(), 0).unwrap());
     memoized_flush_hello();
 }
