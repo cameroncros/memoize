@@ -131,7 +131,7 @@ fn try_unwrap_result_type(outer: proc_macro2::TokenStream) -> proc_macro2::Token
         // Look at the last segment (e.g., "Result")
         let last_segment = path.path.segments.last().expect("Expected a Result");
 
-        if last_segment.ident == "Result" {
+        if last_segment.ident.to_string().contains("Result") {
             if let PathArguments::AngleBracketed(AngleBracketedGenericArguments { args, .. }) = &last_segment.arguments
             {
                 // The first generic argument of Result<T, E> is the Ok type
@@ -571,6 +571,11 @@ mod tests {
     use quote::quote;
     use crate::{check_for_result_type, try_unwrap_result_type};
 
+    #[test]
+    fn test() {
+
+    }
+
     #[parameterized(typestr = {
         "Result<bool>",
         "anyhow::Result<bool>",
@@ -594,14 +599,14 @@ mod tests {
 
     #[parameterized(params = {
         ("Result<bool>", "bool"),
-        ("anyhow::Result<bool>", "bool"),
-        ("std::io::Result<bool>", "bool"),
-        ("io::Result<bool>", "bool"),
+        ("anyhow::Result<u32>", "u32"),
+        ("std::io::Result<String>", "String"),
+        ("io::Result<(u32, u32)>", "(u32 , u32)"),
+        ("CustomResult<CustomStruct, Error>", "CustomStruct"),
     })]
     fn test_try_unwrap_result_type_inner(params: (&str, &str)) {
         let (input_type, output_type) = params;
         let input = TokenStream::from_str(input_type).unwrap();
-        let output = TokenStream::from_str(output_type).unwrap();
         assert_eq!(output_type,
                    try_unwrap_result_type(input).to_string());
     }
