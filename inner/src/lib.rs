@@ -503,6 +503,3 @@ fn check_signature(
     }
     Ok(params)
 }
-
-#[cfg(test)]
-mod tests {}
