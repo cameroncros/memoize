@@ -20,7 +20,7 @@ quote = "1.0"
 syn = { version = "1.0", features = ["full"] }
 
 [dev-dependencies]
-parameterized = "2.1.0"
+test-case = "3.3.1"
 
 [features]
 default = []

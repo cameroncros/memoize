@@ -566,60 +566,45 @@ fn check_signature(
 #[cfg(test)]
 mod tests {
     use std::str::FromStr;
-    use parameterized::parameterized;
+    use test_case::test_case;
     use proc_macro2::TokenStream;
     use quote::quote;
     use crate::{check_for_result_type, try_unwrap_result_type};
 
-    #[test]
-    fn test() {
-
-    }
-
-    #[parameterized(typestr = {
-        "Result<bool>",
-        "anyhow::Result<bool>",
-        "std::io::Result<bool>",
-        "io::Result<bool>",
-    })]
+    #[test_case("Result<bool>")]
+    #[test_case("anyhow::Result<bool>")]
+    #[test_case("std::io::Result<bool>")]
+    #[test_case("io::Result<bool>")]
     fn test_check_for_result_type_success(typestr: &str) {
         let input = TokenStream::from_str(typestr).unwrap();
         assert_eq!(true, check_for_result_type(input));
     }
 
-    #[parameterized(typestr = {
-        "Option<bool>",
-        "(bool, bool)",
-        "bool",
-    })]
+    #[test_case("Option<bool>")]
+    #[test_case("(bool, bool)")]
+    #[test_case("bool")]
     fn test_check_for_result_type_fail(typestr: &str) {
         let input = TokenStream::from_str(typestr).unwrap();
         assert_eq!(false, check_for_result_type(input));
     }
 
-    #[parameterized(params = {
-        ("Result<bool>", "bool"),
-        ("anyhow::Result<u32>", "u32"),
-        ("std::io::Result<String>", "String"),
-        ("io::Result<(u32, u32)>", "(u32 , u32)"),
-        ("CustomResult<CustomStruct, Error>", "CustomStruct"),
-    })]
-    fn test_try_unwrap_result_type_inner(params: (&str, &str)) {
-        let (input_type, output_type) = params;
+    #[test_case("Result<bool>", "bool")]
+    #[test_case("anyhow::Result<u32>", "u32")]
+    #[test_case("std::io::Result<String>", "String")]
+    #[test_case("io::Result<(u32, u32)>", "(u32 , u32)")]
+    #[test_case("CustomResult<CustomStruct, Error>", "CustomStruct")]
+    fn test_try_unwrap_result_type_inner(input_type: &str, output_type: &str) {
         let input = TokenStream::from_str(input_type).unwrap();
         assert_eq!(output_type,
                    try_unwrap_result_type(input).to_string());
     }
 
-    #[parameterized(typestr = {
-        "Option < bool >",
-        "(bool , bool)",
-        "bool",
-    })]
+    #[test_case("Option < bool >")]
+    #[test_case("(bool , bool)")]
+    #[test_case("bool")]
     fn test_try_unwrap_result_type_original(typestr: &str) {
         let input = TokenStream::from_str(typestr).unwrap();
         assert_eq!(typestr.replace(" ", ""),
                    try_unwrap_result_type(input).to_string().replace(" ", ""));
     }
-
 }
